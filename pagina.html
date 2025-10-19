@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mapa Mental — Práctica 1 (Completo)</title>
+
+  <!-- GoJS (para el mapa interactivo) -->
+  <script src="https://unpkg.com/gojs/release/go.js"></script>
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    html,body { height: 100%; margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    #diagramContainer { width: 72%; height: 100vh; float: left; box-sizing: border-box; padding: 18px; }
+    #panelRight { width: 28%; height: 100vh; float: right; box-sizing: border-box; padding: 18px; background: #f8fafc; border-left: 1px solid #e6edf3; overflow-y: auto; }
+    .node-title { font-weight: 700; color: #0f172a; }
+    .small-muted { color: #6b7280; font-size: 0.9rem; }
+    .btn { @apply px-3 py-2 rounded-md text-sm font-medium; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <header class="w-full p-4 bg-white shadow-sm flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <h1 class="text-2xl font-bold">🧠 Mapa Mental (Práctica 1 — Gestión de Proyectos Software)</h1>
+      <span class="small-muted">Mapeo completo de todo el PDF</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="expandAll" class="btn bg-indigo-600 text-white">Expandir todo</button>
+      <button id="collapseAll" class="btn bg-gray-200">Colapsar todo</button>
+      <button id="exportJson" class="btn bg-emerald-600 text-white">Exportar JSON</button>
+    </div>
+  </header>
+
+  <div id="diagramContainer"></div>
+
+  <aside id="panelRight">
+    <div id="detailHeader" class="mb-4">
+      <div id="detailTitle" class="node-title text-xl">Haz clic en un nodo</div>
+      <div id="detailSubtitle" class="small-muted">Aquí verás el contenido completo de cada apartado</div>
+    </div>
+
+    <div id="detailBody" class="prose max-w-none text-gray-800">
+      <p>Selecciona un nodo del mapa para ver su texto completo, notas y acciones sugeridas.</p>
+    </div>
+
+    <div class="mt-6">
+      <h3 class="font-semibold">Acciones rápidas</h3>
+      <ul class="mt-2 space-y-2 text-sm">
+        <li><button id="focusRoot" class="btn bg-blue-600 text-white w-full">Centrar en nodo raíz</button></li>
+        <li><button id="fitToView" class="btn bg-slate-600 text-white w-full">Ajustar vista</button></li>
+      </ul>
+    </div>
+    <div class="mt-6 text-xs text-gray-500">
+      <strong>Nota:</strong> el panel contiene resúmenes y extractos fieles al PDF entregado por el usuario.
+    </div>
+  </aside>
+
+  <script>
+    // Inicialización GoJS
+    function initDiagram() {
+      const $ = go.GraphObject.make;
+
+      const diagram = $(go.Diagram, "diagramContainer", {
+        layout: $(go.LayeredDigraphLayout, { direction: 0, layerSpacing: 50, columnSpacing: 30 }),
+        "undoManager.isEnabled": true,
+        allowDrop: true,
+        initialAutoScale: go.Diagram.Uniform,
+        "SelectionMoved": (e) => { /* placeholder */ }
+      });
+
+      // Node template: tarjeta con texto y botón pequeño para ver detalle
+      diagram.nodeTemplate =
+        $(go.Node, "Auto",
+          {
+            selectionAdorned: true,
+            doubleClick: (e, node) => showDetail(node.data)
+          },
+          $(go.Shape, "RoundedRectangle",
+            { fill: "#ffffff", stroke: "#cbd5e1", strokeWidth: 1, portId: "", cursor: "pointer" }),
+          $(go.Panel, "Horizontal",
+            { margin: 8 },
+            $(go.Picture,
+              { source: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><rect rx='6' ry='6' width='28' height='28' fill='%239ca3af' /></svg>", width: 28, height: 28, margin: new go.Margin(0,8,0,0) }),
+            $(go.TextBlock,
+              { font: "bold 13px Inter, sans-serif", wrap: go.TextBlock.WrapFit, maxSize: new go.Size(220, NaN) },
+              new go.Binding("text", "title"))
+          )
+        );
+
+      // Link template
+      diagram.linkTemplate =
+        $(go.Link,
+          { routing: go.Link.Orthogonal, corner: 6, selectable: false },
+          $(go.Shape, { stroke: "#93c5fd", strokeWidth: 2 }),
+          $(go.Shape, { toArrow: "Triangle", fill: "#93c5fd", stroke: null })
+        );
+
+      // Datos del PDF — cada nodo tiene title y detail (texto completo / extracto)
+      // He transformado el PDF en nodos representativos (objetivo, tipo, iteraciones, riesgos, herramientas, equipo, clientes, etc.)
+      const nodeDataArray = [
+        { key: "root", title: "Práctica 1 - Gestión de Proyectos Software", detail: "Documento: Práctica 1 (Grado en Ingeniería Informática, Universidad de Jaén, Curso 2025/2026). Participantes: David Fernández Espejo, David Lorente Wagner, Alba Collado Cano. Contenido: objetivo, tipo, ámbito, temática, requisitos, iteraciones, gestión de riesgos, equipamiento, herramientas, recursos humanos, clientes potenciales." },
+
+        // Encabezados principales
+        { key: "objetivo", parent: "root", title: "OBJETIVO DEL PROYECTO", detail: "Realizar un remake / videojuego acción-RPG tipo hack & slash inspirado en Path of Exile. Mejoras: mecánicas complejas, skins, nuevas animaciones, nuevos personajes, mundo abierto persistente. Público objetivo: jugadores hardcore y nuevas generaciones. Finalidad: combinar acción, exploración, progresión profunda y multijugador." },
+
+        { key: "tipo", parent: "root", title: "TIPO DE PROYECTO", detail: "Videojuego acción-RPG multiplataforma (PC y móviles inicialmente; previsión posterior para consolas). Controles adaptados por plataforma, mejoras gráficas, rediseños de personajes y escenarios." },
+
+        { key: "ambito", parent: "root", title: "ÁMBITO DEL PROYECTO", detail: "Alcance internacional, público hardcore gamer, lanzamiento inicial a plataformas principales con expansión futura de contenido y plataformas." },
+
+        { key: "tematica", parent: "root", title: "TEMÁTICA DEL PROYECTO", detail: "Mundo de fantasía oscura; jugador como héroe exiliado que combate fuerzas malignas. Mundo abierto persistente, zonas interconectadas, mazmorras procedurales y misiones dinámicas." },
+
+        // Temática - subpuntos
+        { key: "exploracion", parent: "tematica", title: "Exploración", detail: "Mapas extensos con expansiones. Secretos ocultos, recompensas visuales (cofres, gemas) que mejoran builds. Fomento de la exploración con objetos exclusivos." },
+        { key: "mazmorras", parent: "tematica", title: "Mazmorras y retos", detail: "Mazmorras generadas dinámicamente. Minijuegos (palancas, acertijos, puzzles, laberintos), eventos temporales que pueden volverse permanentes según feedback." },
+        { key: "progresion", parent: "tematica", title: "Progresión de habilidades", detail: "Árbol de habilidades amplio; niveles iniciales hasta 10 (fase final). Especializaciones por ramas: ataque base, defensa, vida, ataque especial. Reinicio/distribución de puntos." },
+        { key: "loot", parent: "tematica", title: "Loot y objetos", detail: "Objetos en exploración y eventos. Sistema de rarezas: común, poco común, raro, épico, mítico, legendario. Crafting y objetos exclusivos en eventos." },
+        { key: "multijugador", parent: "tematica", title: "Experiencia multijugador", detail: "Cooperativo en mazmorras (inicialmente 2 jugadores), chat de equipo, PvP 1v1, ligas y modos clasificatorios y battle royale en futuras versiones." },
+
+        // Requisitos e iteraciones
+        { key: "requisitos", parent: "root", title: "REQUISITOS DEL PROYECTO", detail: "Organizado en 3 iteraciones: base, mecánicas avanzadas, pulido final. Hitos y tiempos estimados por epoca." },
+
+        // Iteración 1
+        { key: "iter1", parent: "requisitos", title: "ITERACIÓN 1 — Base del Juego", detail: "HITO: Base del Juego. Entregables mínimos para probar núcleo (mapa base, mazmorras simples, árbol habilidades básico, loot, multijugador básico)." },
+        { key: "iter1_map", parent: "iter1", title: "Exploración y entorno (2 sem.)", detail: "Implementación de mapa base tamaño medio, rutas principales, áreas ocultas simples, cofres, cofres ocultos y gemas." },
+        { key: "iter1_dungeons", parent: "iter1", title: "Mazmorras básicas (3 sem.)", detail: "Generación procedural sencilla, minijuegos de desbloqueo: palancas, acertijos, puzzles y laberintos; cofres como recompensa." },
+        { key: "iter1_skills", parent: "iter1", title: "Progresión inicial (4 sem.)", detail: "Árbol de habilidades hasta nivel 5: ataque base, defensa, vida, ataque especial; redistribución de puntos." },
+        { key: "iter1_loot", parent: "iter1", title: "Loot inicial (3 sem.)", detail: "Sistema de rareza básica (común→épico), armas y armaduras iniciales; recolección al derrotar enemigos y abrir cofres." },
+        { key: "iter1_mp", parent: "iter1", title: "Multijugador básico (3 sem.)", detail: "Cooperativo en mazmorras iniciales (máx. 2 jugadores), chat de equipo básico." },
+
+        // Iteración 2
+        { key: "iter2", parent: "requisitos", title: "ITERACIÓN 2 — Mecánicas Avanzadas", detail: "HITO: Mecánicas Avanzadas. Ampliación de contenido: exploración ampliada, eventos dinámicos, árbol hasta nivel 10, loot avanzado y multijugador expandido." },
+        { key: "iter2_explore", parent: "iter2", title: "Exploración ampliada (4 sem.)", detail: "Extensión del mapa, nuevos territorios, secretos más complejos, recompensas de exploración (objetos raros)." },
+        { key: "iter2_dungeons", parent: "iter2", title: "Mazmorras y eventos dinámicos (3 sem.)", detail: "Minijuegos más complejos, trampas, eventos temporales; encuestas para decidir permanencia de eventos." },
+        { key: "iter2_skills", parent: "iter2", title: "Progresión avanzada (4 sem.)", detail: "Árbol hasta nivel 10, especializaciones; sinergias entre habilidades y objetos." },
+        { key: "iter2_loot", parent: "iter2", title: "Loot avanzado (3 sem.)", detail: "Nuevas rarezas: mítico, legendario; encantamientos mejorados; crafting; objetos exclusivos por tiempo limitado." },
+        { key: "iter2_mp", parent: "iter2", title: "Multijugador expandido (4 sem.)", detail: "Eventos cooperativos permanentes; PvP básico 1v1; clasificación inicial." },
+
+        // Iteración 3
+        { key: "iter3", parent: "requisitos", title: "ITERACIÓN 3 — Finalización y Pulido", detail: "HITO: Finalización y Pulido. Mundo abierto total, mazmorras difíciles, árbol completo, crafting avanzado, PvP competitivo." },
+        { key: "iter3_explore", parent: "iter3", title: "Exploración total (5 sem.)", detail: "Mundo abierto con múltiples regiones conectadas; zonas secretas y eventos globales." },
+        { key: "iter3_dungeons", parent: "iter3", title: "Mazmorras y eventos permanentes (4 sem.)", detail: "Mazmorras de mayor dificultad; integración de eventos elegidos por feedback; recompensas exclusivas." },
+        { key: "iter3_skills", parent: "iter3", title: "Progresión final (5 sem.)", detail: "Árbol completo con múltiples caminos, habilidades definitivas (ultimate skills), balanceo y optimización." },
+        { key: "iter3_loot", parent: "iter3", title: "Loot final (2 sem.)", detail: "Crafting avanzado; mercado in-game para intercambio equilibrado." },
+        { key: "iter3_mp", parent: "iter3", title: "Multijugador competitivo (6 sem.)", detail: "PvP en arenas clasificatorias; ligas y battle royale; raids y eventos globales." },
+
+        // Gestión de riesgos
+        { key: "riesgos", parent: "root", title: "GESTIÓN DE RIESGOS", detail: "Identificación, análisis, planificación, implementación y seguimientos. Tabla de riesgos en Excel (mencionada en el documento del profesor)." },
+        { key: "riesgos_ident", parent: "riesgos", title: "1. IDENTIFICACIÓN", detail: "Identificación exhaustiva de riesgos con tabla en Excel. Formato y probabilidades según plantilla del profesor." },
+        { key: "riesgos_analisis", parent: "riesgos", title: "2. ANÁLISIS", detail: "Riesgos prioritarios: complejidad del árbol de habilidades, protección de datos, acoso entre jugadores. Riesgos moderados: retrasos por conflictos. Riesgos bajos pero críticos: prohibición de distribución, eventos catastróficos." },
+        { key: "riesgos_plan", parent: "riesgos", title: "3. PLANIFICACIÓN", detail: "Estrategias: evitar, mitigar, transferir o contingencia. Ejemplos: contratar refuerzos ante retrasos; modularizar árbol de habilidades; usar motores con LTS; protocolos GDPR/CCPA; publishers locales para distribución." },
+        { key: "riesgos_impl", parent: "riesgos", title: "4. IMPLEMENTACIÓN", detail: "Acciones detalladas por riesgo: modularizar tareas, pruebas con alpha testers, plan de migración de motor, cifrado y auditorías, servidores redundantes, políticas de moderación y filtros anti-toxicity." },
+        { key: "riesgos_seguim", parent: "riesgos", title: "5. SEGUIMIENTOS", detail: "Reuniones quincenales de riesgos, métricas: burndown, bugs del árbol de habilidades, auditorías de seguridad, monitorización de cambios regulatorios, encuestas interna y monitoreo de toxicidad." },
+
+        // Equipamiento y herramientas
+        { key: "equipamiento", parent: "root", title: "EQUIPAMIENTO DEL PRODUCTO", detail: "Accesos a plataformas de lanzamiento (Steam, Epic), cuentas y licencias para motores, herramientas de assets y control de versiones, cloud saves y sistemas de notificación." },
+        { key: "herramientas", parent: "root", title: "HERRAMIENTAS DE DESARROLLO", detail: "Motores: Unity o Unreal Engine (3D). Software: Blender, Substance Painter, Photoshop. Licencias: Unity Pro/Unreal Marketplace, Adobe CC. Control de versiones: Git + GitHub/GitLab." },
+
+        // Recursos humanos
+        { key: "recursos", parent: "root", title: "RECURSOS HUMANOS Y HABILIDADES", detail: "Equipo sugerido: 3 programadores, 2 diseñadores 3D, 1 UX/UI, 1 artista 2D, 1 diseñador de niveles, 1 PO/jefe de proyecto. Roles detallados: combate, multijugador, modelado, UI, iconografía, balanceo, planificación." },
+
+        // Clientes potenciales
+        { key: "clientes", parent: "root", title: "CLIENTES POTENCIALES", detail: "Jugadores de PC y móviles fans de acción-RPG/hack&slash. Interesados en progresión compleja, loot, multijugador cooperativo/competitivo. Público objetivo 18-40 años, PEGI 18." },
+
+        // Metadatos: participantes / curso
+        { key: "metadatos", parent: "root", title: "Metadatos y Participantes", detail: "Participantes: David Fernández Espejo (dfe00004@red.ujaen.es), David Lorente Wagner (dlw00001@red.ujaen.es), Alba Collado Cano (acc00255@red.ujaen.es). Grado en Ingeniería Informática - Universidad de Jaén - Curso 2025/2026." }
+      ];
+
+      // Crear el modelo
+      diagram.model = new go.TreeModel(nodeDataArray);
+
+      // Evento: cuando se selecciona un nodo, actualizar panel derecho
+      diagram.addDiagramListener("ChangedSelection", function(e) {
+        const sel = diagram.selection.first();
+        if (sel && sel.data) {
+          showDetail(sel.data);
+        }
+      });
+
+      // Ajustes de zoom y centrado
+      document.getElementById("fitToView").addEventListener("click", () => diagram.commandHandler.scrollToPart(diagram.documentBounds));
+      document.getElementById("focusRoot").addEventListener("click", () => {
+        const rootnode = diagram.findNodeForKey("root");
+        if (rootnode) diagram.select(rootnode);
+        diagram.centerRect(rootnode.actualBounds);
+      });
+
+      // Expandir / colapsar todo
+      document.getElementById("expandAll").addEventListener("click", () => {
+        diagram.nodes.each(n => n.expandTree(1));
+      });
+      document.getElementById("collapseAll").addEventListener("click", () => {
+        diagram.nodes.each(n => n.collapseTree(1));
+      });
+
+      // Exportar JSON (modelo actual)
+      document.getElementById("exportJson").addEventListener("click", () => {
+        const json = diagram.model.toJson();
+        const blob = new Blob([json], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "mapa_mental_practica1.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      // Función utilitaria para mostrar detalles en panel derecho
+      window.showDetail = function(data) {
+        const title = data.title || data.key || "Sin título";
+        const detail = data.detail || "No hay detalle disponible para este nodo.";
+        document.getElementById("detailTitle").textContent = title;
+        // subtitle opcional: key
+        document.getElementById("detailSubtitle").textContent = "Nodo: " + (data.key || "");
+        // cuerpo: permitir párrafos
+        const body = document.getElementById("detailBody");
+        body.innerHTML = "";
+        // Convertir saltos de línea en párrafos (si hay)
+        const paragraphs = detail.split(/\n{1,}/).map(p => p.trim()).filter(Boolean);
+        paragraphs.forEach(p => {
+          const ptag = document.createElement("p");
+          ptag.textContent = p;
+          body.appendChild(ptag);
+        });
+        // Añadir botón para copiar al portapapeles
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "btn mt-4 bg-indigo-600 text-white";
+        copyBtn.textContent = "Copiar detalle";
+        copyBtn.onclick = () => {
+          navigator.clipboard?.writeText(title + "\n\n" + detail).then(() => {
+            copyBtn.textContent = "Copiado ✅";
+            setTimeout(() => copyBtn.textContent = "Copiar detalle", 1400);
+          });
+        };
+        body.appendChild(copyBtn);
+      };
+
+      // Inicial: seleccionar raíz
+      diagram.requestUpdate();
+      setTimeout(() => {
+        const r = diagram.findNodeForKey("root");
+        if (r) { diagram.select(r); diagram.centerRect(r.actualBounds); }
+      }, 200);
+
+      return diagram;
+    }
+
+    // Inicializar
+    window.addEventListener('DOMContentLoaded', () => {
+      window.myDiagram = initDiagram();
+    });
+
+  </script>
+</body>
+</html>
